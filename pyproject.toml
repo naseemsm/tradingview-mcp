@@ -46,6 +46,17 @@ dependencies = [
   "tradingview-ta>=3.3.0",
 ]
 
+[project.optional-dependencies]
+# The authenticating relay used by the Railway deployment (Dockerfile.railway, relay/).
+# Kept out of the base dependencies so the published MCP package stays lean.
+relay = [
+  "uvicorn[standard]>=0.30",
+  "PyJWT>=2.9",
+  "argon2-cffi>=23.1",
+  "pydantic-settings>=2.4",
+  "python-multipart>=0.0.9",
+]
+
 [project.scripts]
 # Entry point now points to packaged module
 tradingview-mcp = "tradingview_mcp.server:main"
@@ -60,11 +71,16 @@ tradingview_mcp = ["coinlist/*.txt"]
 dev-dependencies = [
     "pytest>=9.0.3",
     "pytest-asyncio>=0.24",
+    # tests/unit/relay exercises the relay package (tests are anyio-based).
+    "anyio>=4",
+    "tradingview-mcp-server[relay]",
 ]
 package = true
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
+# Makes the top-level `relay` package importable from tests/unit/relay.
+pythonpath = ["."]
 # Default runs stay hermetic — the real-network stress suite only runs when
 # explicitly selected: `pytest -m stress tests/stress`.
 addopts = '-m "not stress"'

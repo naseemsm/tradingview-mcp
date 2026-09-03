@@ -1,0 +1,29 @@
+# Railway image: the TradingView MCP server plus the authenticating relay, one image, two
+# processes (see entrypoint.sh). The plain ./Dockerfile stays the unauthenticated upstream
+# image published to GHCR; railway.toml points Railway at this file instead.
+FROM python:3.11-slim AS builder
+
+RUN apt-get update && apt-get install -y --no-install-recommends curl \
+    && rm -rf /var/lib/apt/lists/* \
+    && curl -LsSf https://astral.sh/uv/install.sh | env UV_INSTALL_DIR="/usr/local/bin" sh
+
+WORKDIR /app
+COPY . .
+# ".[relay]" adds the relay's own dependencies (Starlette is already pulled in by mcp).
+RUN uv pip install --system ".[relay]"
+
+FROM python:3.11-slim
+
+# setpriv (util-linux) lets the root entrypoint drop to mcpuser after fixing /data ownership.
+RUN apt-get update && apt-get install -y --no-install-recommends util-linux \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+COPY --from=builder /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
+COPY --from=builder /usr/local/bin/tradingview-mcp /usr/local/bin/tradingview-mcp
+COPY --from=builder /app /app
+
+RUN useradd -m mcpuser && chown -R mcpuser:mcpuser /app && chmod +x /app/entrypoint.sh
+ENV PYTHONUNBUFFERED=1 RELAY_DATA_DIR=/data
+EXPOSE 8080
+ENTRYPOINT ["/app/entrypoint.sh"]

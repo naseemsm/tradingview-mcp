@@ -66,6 +66,23 @@ are restricted to `https://claude.ai/api/mcp/auth_callback`, RFC 8252 loopback
 5. `GET /healthz` returns `{"relay":"ok","upstream":"up"}` once the MCP server has imported
    pandas and started (a few seconds). The Railway healthcheck waits up to 300 s.
 
+## Deploy pipeline
+
+The service auto-deploys from `main`. Two gates keep a broken commit from replacing the
+live relay:
+
+1. **In the image build.** `Dockerfile.railway` has a `test` stage that runs
+   `pytest tests/unit` (server and relay tests); the runtime stage depends on it. If the
+   suite fails, the Railway build fails and the previous deployment stays live. This works
+   even when GitHub Actions is not running.
+2. **In GitHub Actions.** `.github/workflows/test.yml` runs the suite on every push and PR
+   and builds `Dockerfile.railway` (its `railway-image` job). With Actions enabled on the
+   repo, turn on **Wait for CI** in the Railway service settings so a deployment moves to
+   `WAITING` until the workflows pass and is `SKIPPED` if any fail.
+
+After a deploy, Railway hits `/healthz` (up to 300 s) before routing traffic to the new
+container; a container that never becomes healthy is not promoted.
+
 ## Connect clients
 
 **claude.ai / Desktop / mobile:** Settings > Connectors > Add custom connector, URL

@@ -1,0 +1,44 @@
+# Build-context filter for Dockerfile.railway (BuildKit uses <Dockerfile>.dockerignore).
+# Logs
+*.log
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Git
+.git/
+.gitignore
+
+# Docker
+docker-compose*.yml
+Dockerfile
+
+# Tests & CI
+.github/
+# tests/ stays in the context: the test stage runs tests/unit
+*.test.*
+
+# Docs (not needed in image)
+*.md
+!README.md
+LICENSE

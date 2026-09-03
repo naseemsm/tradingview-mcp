@@ -209,6 +209,13 @@ uv run tradingview-mcp
 
 ---
 
+## 🔒 Private Railway deployment (OAuth-gated)
+
+Want the server reachable from claude.ai, Claude Desktop, mobile and Claude Code without
+exposing an unauthenticated endpoint? `Dockerfile.railway` + `railway.toml` deploy the server
+behind a small authenticating relay (OAuth 2.1 with PKCE for hosted Claude, static bearer
+tokens for Claude Code and scripts). See [docs/RAILWAY.md](docs/RAILWAY.md).
+
 ## 🛠️ Troubleshooting
 
 ### 🪟 Windows: `MCP error -32001: Request timed out` on first launch

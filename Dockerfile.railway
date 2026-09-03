@@ -1,0 +1,43 @@
+# Railway image: the TradingView MCP server plus the authenticating relay, one image, two
+# processes (see entrypoint.sh). The plain ./Dockerfile stays the unauthenticated upstream
+# image published to GHCR; railway.toml points Railway at this file instead.
+#
+# Build context is filtered by Dockerfile.railway.dockerignore (BuildKit picks the
+# per-Dockerfile ignore file), which keeps tests/ in the context for the `test` stage.
+FROM python:3.11-slim AS builder
+
+RUN apt-get update && apt-get install -y --no-install-recommends curl \
+    && rm -rf /var/lib/apt/lists/* \
+    && curl -LsSf https://astral.sh/uv/install.sh | env UV_INSTALL_DIR="/usr/local/bin" sh
+
+WORKDIR /app
+COPY . .
+# ".[relay]" adds the relay's own dependencies (Starlette is already pulled in by mcp).
+RUN uv pip install --system ".[relay]"
+
+# ---- Deploy gate: the unit suite (server + relay) must pass or the image does not build.
+# Railway keeps the previous deployment live when a build fails, so a red commit on the
+# deploy branch can never replace a working relay, with or without GitHub Actions.
+FROM builder AS test
+RUN uv pip install --system "pytest>=9" "pytest-asyncio>=0.24" "anyio>=4" \
+    && python -m pytest tests/unit -q -p no:cacheprovider \
+    && touch /tests-passed
+
+FROM python:3.11-slim
+
+# setpriv (util-linux) lets the root entrypoint drop to mcpuser after fixing /data ownership.
+RUN apt-get update && apt-get install -y --no-install-recommends util-linux \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+# Depending on the test stage's output makes the runtime image wait for (and require) it.
+COPY --from=test /tests-passed /tests-passed
+COPY --from=builder /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
+COPY --from=builder /usr/local/bin/tradingview-mcp /usr/local/bin/tradingview-mcp
+COPY --from=builder /app /app
+RUN rm -rf /app/tests
+
+RUN useradd -m mcpuser && chown -R mcpuser:mcpuser /app && chmod +x /app/entrypoint.sh
+ENV PYTHONUNBUFFERED=1 RELAY_DATA_DIR=/data
+EXPOSE 8080
+ENTRYPOINT ["/app/entrypoint.sh"]

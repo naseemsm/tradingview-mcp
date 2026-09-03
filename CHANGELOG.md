@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+- **Private Railway deployment**: `Dockerfile.railway`, `railway.toml`, `entrypoint.sh`
+  and a `relay/` package put an authenticating boundary (single-user OAuth 2.1 with
+  PKCE and dynamic client registration, plus static bearer tokens) in front of the
+  streamable-http `/mcp` endpoint. The MCP server binds to loopback only; the relay is
+  the sole published port. Deps live in the `relay` extra; tests in `tests/unit/relay`.
+  See `docs/RAILWAY.md`.
+
 ## [0.9.0] - 2026-08-26
 
 ### Changed (behavior)

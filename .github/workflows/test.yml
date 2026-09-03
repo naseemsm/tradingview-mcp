@@ -36,3 +36,19 @@ jobs:
 
       - name: Run unit tests
         run: uv run pytest tests/unit -q
+
+  # Builds the Railway image (Dockerfile.railway). Its `test` stage runs the same unit
+  # suite, so this job proves the image Railway will build from this commit is green
+  # before it lands on the deploy branch.
+  railway-image:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile.railway
+          push: false
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
